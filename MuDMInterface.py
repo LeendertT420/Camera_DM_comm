@@ -12,6 +12,7 @@ from os import getcwd, path, chdir
 import platform
 from _ctypes import FreeLibrary
 
+#define global parameters
 def buffer_size() :
     return 256
 def actuator_count() :
@@ -24,7 +25,7 @@ def load_dll() :
     if(platform.architecture()[0] == '32bit'):
         raise Exception('Platform Error','---You only have x64 MuDM Installation, Use python x64 Interpreter and x64 OS---')
     if(platform.architecture()[0] == '64bit'):
-        dlls_dir = 'C:\\Program Files\\Mu-Imagine\\MuDM_Suite_1.1.3\\bin\\x64'
+        dlls_dir = 'C:\\Program Files\\Mu-Imagine\\MuDM_Suite_1.1.3\\bin\\x64' #change this path accordingly!!!
 
     dll_name = 0
     if(platform.architecture()[0] == '64bit'):
@@ -53,9 +54,9 @@ class MuDMInterface(object):
         self.dll= load_dll()
         self.nb_actuators = actuator_count()
         message = ctypes.create_string_buffer(buffer_size())
-        self.dll.MuDMInterface_New(message,ctypes.pointer(self.MuDMInterface))
+        self.dll.MuDMInterface_New(message, ctypes.pointer(self.MuDMInterface))
         if message.value != '' and message.value != b'' :
-            raise Exception('MuDM_Error',message.value)
+            raise Exception('MuDM_Error', message.value)
 
 
     def __del_obj__(self):
@@ -70,7 +71,8 @@ class MuDMInterface(object):
         self.__del_obj__()
         free_dll(self.dll._handle)
 
-    def connect(self,serial_number):
+    def connect(self,
+                serial_number: str) -> None:
         """Establish connection to the mirror and sets it to its initial position
 
         :param serial_number: serial number of a connected mirror
@@ -78,25 +80,23 @@ class MuDMInterface(object):
         """
         try:
             message = ctypes.create_string_buffer(buffer_size())
-            self.dll.MuDMInterface_Connect(message,self.MuDMInterface,ctypes.c_char_p(serial_number.encode('utf-8')))
+            self.dll.MuDMInterface_Connect(message, self.MuDMInterface, ctypes.c_char_p(serial_number.encode('utf-8')))
             if message.value != '' and message.value != b'' :
-                raise Exception('MuDM_Error',message.value)
+                raise Exception('MuDM_Error', message.value)
         except Exception as exception:
-            raise Exception(__name__+' : connect',exception)
+            raise Exception(__name__+' : connect', exception)
 
     def disconnect(self):
         """Close connection to the device """
         try:
             message = ctypes.create_string_buffer(buffer_size())
-            self.dll.MuDMInterface_Disconnect(message,self.MuDMInterface)
+            self.dll.MuDMInterface_Disconnect(message, self.MuDMInterface)
             if message.value != '' and message.value != b'' :
-                raise Exception('MuDM_Error',message.value)
+                raise Exception('MuDM_Error', message.value)
         except Exception as exception:
-            raise Exception(__name__+' : disconnect',exception)
+            raise Exception(__name__+' : disconnect', exception)
 
-    def get_temperature(
-        self
-        ):
+    def get_temperature(self) -> float:
         """Get current MuDMInterface Temperature
 
         :return: Temperature (Celcius)
@@ -105,15 +105,14 @@ class MuDMInterface(object):
         try:
             message = ctypes.create_string_buffer(buffer_size())
             temp_out = ctypes.c_float()
-            self.dll.MuDMInterface_GetTemperature(message,self.MuDMInterface,ctypes.byref(temp_out))
-            if message.value != '' and message.value != b'' : raise Exception('MuDM_Error',message.value)
+            self.dll.MuDMInterface_GetTemperature(message, self.MuDMInterface, ctypes.byref(temp_out))
+            if message.value != '' and message.value != b'' :
+                raise Exception('MuDM_Error', message.value)
             return temp_out.value
         except Exception as exception:
-            raise Exception(__name__+' : get_temperature',exception)
+            raise Exception(__name__+' : get_temperature', exception)
 
-    def get_overheat_status(
-        self
-        ):
+    def get_overheat_status(self) -> bool:
         """Get current MuDMInterface OverheatStatus : true if mirror stopped working
 
         :return: Status
@@ -122,16 +121,15 @@ class MuDMInterface(object):
         try:
             message = ctypes.create_string_buffer(buffer_size())
             status = ctypes.c_int()
-            self.dll.MuDMInterface_GetOverHeatStatus(message,self.MuDMInterface,ctypes.byref(status))
-            if message.value != '' and message.value != b'' : raise Exception('MuDM_Error',message.value)
+            self.dll.MuDMInterface_GetOverHeatStatus(message, self.MuDMInterface, ctypes.byref(status))
+            if message.value != '' and message.value != b'' :
+                raise Exception('MuDM_Error', message.value)
             return bool(status.value)
         except Exception as exception:
-            raise Exception(__name__+' : get_overheat_status',exception)
+            raise Exception(__name__+' : get_overheat_status', exception)
 
 
-    def get_current_positions(
-        self
-        ):
+    def get_current_positions(self) -> list:
         """Get current actuators positions
 
         :return: Array containing the actuators positions
@@ -141,16 +139,15 @@ class MuDMInterface(object):
             message = ctypes.create_string_buffer(buffer_size())
             value_out_positions = numpy.zeros(self.nb_actuators, dtype = numpy.single)
             self.dll.MuDMInterface_GetCurrentPositions.argtypes = [ctypes.c_char_p, ctypes.c_void_p, numpy.ctypeslib.ndpointer(numpy.single, flags="C_CONTIGUOUS")]
-            self.dll.MuDMInterface_GetCurrentPositions( message,self.MuDMInterface,value_out_positions )
-            if message.value != '' and message.value != b'' : raise Exception('MuDM_Error',message.value)
+            self.dll.MuDMInterface_GetCurrentPositions(message, self.MuDMInterface, value_out_positions)
+            if message.value != '' and message.value != b'':
+                raise Exception('MuDM_Error', message.value)
             return value_out_positions.tolist()
         except Exception as exception:
-            raise Exception(__name__+' : get_current_positions',exception)
+            raise Exception(__name__+' : get_current_positions', exception)
 
-    def move_to_absolute_positions(
-        self,
-        positions_array
-        ):
+    def move_to_absolute_positions(self,
+                                   positions_array: list) -> None:
         """Move to requested absolute positions, clip according to aplitude limits
 
         :param positions_array: Requested absolutes positions
@@ -160,25 +157,26 @@ class MuDMInterface(object):
             message = ctypes.create_string_buffer(buffer_size())
             self.dll.MuDMInterface_MoveToAbsolutePositions.argtypes = [ctypes.c_char_p, ctypes.c_void_p,numpy.ctypeslib.ndpointer(numpy.float32, flags="C_CONTIGUOUS")]
             self.dll.MuDMInterface_MoveToAbsolutePositions(message, self.MuDMInterface, numpy.array(positions_array, dtype = numpy.float32) )
-            if message.value != '' and message.value != b'' : raise Exception('MuDM_Error',message.value)
+            if message.value != '' and message.value != b'':
+                raise Exception('MuDM_Error', message.value)
         except Exception as exception:
             raise Exception(__name__+' : move_to_absolute_positions',exception)
 
 
-    def move_to_zernike_surface(
-        self,
-        positions_array,
-        focus_correction
-        ):
-        """Move to requested absolute positions, clip according to aplitude limits
+    def move_to_zernike_surface(self, positions_array: list, focus_correction: int) -> None:
+        """Move to requested absolute positions, clip according to amplitude limits
 
         :param positions_array: Requested absolutes positions
         :type positions_array: float list[] (size = Zernike Count)
+        :param focus_correction: Focus correction value
+        :type focus_correction: int
+
         """
         try:
             message = ctypes.create_string_buffer(buffer_size())
-            self.dll.MuDMInterface_MoveToZernikeSurface.argtypes = [ctypes.c_char_p,ctypes.c_void_p, numpy.ctypeslib.ndpointer(numpy.float32, flags="C_CONTIGUOUS"), ctypes.c_int]
-            self.dll.MuDMInterface_MoveToZernikeSurface( message,self.MuDMInterface,numpy.array(positions_array, dtype = numpy.float32), ctypes.c_int(int(focus_correction)))
-            if message.value != '' and message.value != b'' : raise Exception('MuDM_Error',message.value)
+            self.dll.MuDMInterface_MoveToZernikeSurface.argtypes = [ctypes.c_char_p, ctypes.c_void_p, numpy.ctypeslib.ndpointer(numpy.float32, flags="C_CONTIGUOUS"), ctypes.c_int]
+            self.dll.MuDMInterface_MoveToZernikeSurface(message, self.MuDMInterface, numpy.array(positions_array, dtype = numpy.float32), ctypes.c_int(int(focus_correction)))
+            if message.value != '' and message.value != b'':
+                raise Exception('MuDM_Error',message.value)
         except Exception as exception:
             raise Exception(__name__+' : move_to_zernike_surface',exception)
